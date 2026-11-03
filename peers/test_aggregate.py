@@ -74,4 +74,27 @@ except SystemExit as e:
 part = agg.join_inputs(spine.drop(columns=["has_ai", "ai_type"]), tags.iloc[:-10], emb_ids, allow_partial=True)
 assert len(part) == len(spine) - 10
 
+# peers-only: zonder tags moet dezelfde concurrentenlijst uitkomen
+df_np = agg.join_inputs(spine.drop(columns=["has_ai", "ai_type"]), None, emb_ids)
+names_np, vecs_np = agg.company_vectors(df_np, emb_shuffled, min_postings=100)
+assert names_np == names
+peers_np = agg.top_peers(names_np, vecs_np, k=5)
+agg.validate(None, peers_np)
+pd.testing.assert_frame_equal(peers_np.reset_index(drop=True), peers.reset_index(drop=True))
+
+# evaluatie van de concurrentenlijst
+spec_e = importlib.util.spec_from_file_location("eval_peers", Path(__file__).with_name("eval_peers.py"))
+ev = importlib.util.module_from_spec(spec_e)
+spec_e.loader.exec_module(ev)
+peers2 = agg.top_peers(names, vecs_c, k=2)
+table, missing, baseline = ev.known_competitors(
+    peers2, {"A": ["a1", "a2", "a3"], "B": ["b1", "b2", "b3"], "X": ["zzz", "a1"]})
+assert missing == ["zzz"], missing
+assert np.isclose(baseline, 2 / 5), baseline
+assert (table["recall"] == 1.0).all() and len(table) == 6, table
+companies = pd.DataFrame({"company_id": names, "main_country": ["BE" if n.startswith("a") else "NL" for n in names]})
+observed, base = ev.country_overlap(peers2, companies)
+assert observed == 1.0 and np.isclose(base, 12 / 30), (observed, base)
+print("peers-only en evaluatie ok")
+
 print("alle controles geslaagd")

@@ -44,14 +44,20 @@ CQ_COLUMNS = [
 PEER_COLUMNS = ["company_id", "peer_id", "similarity", "rank"]
 
 
-def join_inputs(spine: pd.DataFrame, tags: pd.DataFrame, emb_ids: pd.Series,
+def join_inputs(spine: pd.DataFrame, tags: pd.DataFrame | None, emb_ids: pd.Series,
                 allow_partial: bool = False) -> pd.DataFrame:
-    """Spine + tags + rijnummer in de embeddingmatrix, allemaal via vacancy_id."""
+    """Spine + tags + rijnummer in de embeddingmatrix, allemaal via vacancy_id.
+    Met tags=None (peers-only) krijgt elke vacature een neutrale tag; de concurrentenlijst gebruikt die niet."""
     if not emb_ids.is_unique:
         sys.exit("embeddings_ids bevat dubbele vacancy_id's")
-    df = spine[["vacancy_id", "company_id", "is_agency", "quarter"]].merge(
-        tags[["vacancy_id", "has_ai", "ai_type"]], on="vacancy_id", how="left", validate="one_to_one",
-    )
+    cols = ["vacancy_id", "company_id", "is_agency", "quarter"]
+    if tags is None:
+        df = spine[cols].copy()
+        df["has_ai"], df["ai_type"] = False, "none"
+    else:
+        df = spine[cols].merge(
+            tags[["vacancy_id", "has_ai", "ai_type"]], on="vacancy_id", how="left", validate="one_to_one",
+        )
     row_of = pd.Series(np.arange(len(emb_ids)), index=pd.Index(emb_ids.astype(str)))
     df["emb_row"] = df["vacancy_id"].astype(str).map(row_of)
 
@@ -130,14 +136,17 @@ def top_peers(names: list[str], vecs: np.ndarray, k: int = 5, block: int = 1024)
     })
 
 
-def validate(cq: pd.DataFrame, peers: pd.DataFrame) -> None:
-    assert list(cq.columns) == CQ_COLUMNS and list(peers.columns) == PEER_COLUMNS
-    assert not cq.duplicated(["company_id", "quarter"]).any()
+def validate(cq: pd.DataFrame | None, peers: pd.DataFrame) -> None:
+    assert list(peers.columns) == PEER_COLUMNS
     assert not peers.duplicated(["company_id", "rank"]).any()
-    shares = cq[["share_ai", "share_builder", "share_user", "share_governor"]]
-    assert ((shares >= 0) & (shares <= 1)).all().all()
     assert (peers["company_id"] != peers["peer_id"]).all()
     assert peers["rank"].between(1, 5).all()
+    if cq is None:  # peers-only: geen company_quarter om tegen te controleren
+        return
+    assert list(cq.columns) == CQ_COLUMNS
+    assert not cq.duplicated(["company_id", "quarter"]).any()
+    shares = cq[["share_ai", "share_builder", "share_user", "share_governor"]]
+    assert ((shares >= 0) & (shares <= 1)).all().all()
     assert set(peers["company_id"]) <= set(cq["company_id"]), "peers voor een bedrijf zonder aandelen"
 
 
@@ -157,10 +166,13 @@ def main() -> None:
     ap.add_argument("--min-postings", type=int, default=200)
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument("--allow-partial", action="store_true", help="ga door als tags of embeddings voor sommige vacatures ontbreken")
+    ap.add_argument("--peers-only", action="store_true",
+                    help="alleen peers.parquet, zonder tags en company_quarter (de concurrentenlijst heeft B's tags niet nodig)")
     args = ap.parse_args()
 
     ids_path = args.embeddings.with_name(args.embeddings.stem + "_ids.parquet")
-    spine, tags = pd.read_parquet(args.spine), pd.read_parquet(args.tags)
+    spine = pd.read_parquet(args.spine)
+    tags = None if args.peers_only else pd.read_parquet(args.tags)
     emb_ids = pd.read_parquet(ids_path)["vacancy_id"]
     emb = np.load(args.embeddings, mmap_mode="r")
     if len(emb) != len(emb_ids):
@@ -170,14 +182,16 @@ def main() -> None:
     n_agency = int(df["is_agency"].sum())
     print(f"{len(df):,} vacatures gebruikt, waarvan {n_agency:,} van tussenpersonen ({n_agency / len(df):.1%}) die wegvallen")
 
-    cq = make_company_quarter(df)
+    cq = None if args.peers_only else make_company_quarter(df)
     names, vecs = company_vectors(df, emb, args.min_postings)
     peers = top_peers(names, vecs, k=args.top_k)
     validate(cq, peers)
-    print(f"{cq['company_id'].nunique():,} bedrijven in company_quarter, {len(names):,} met >= {args.min_postings} "
-          f"vacatures in peers")
-
-    write_atomic(cq, args.out_dir / "company_quarter.parquet")
+    if cq is not None:
+        print(f"{cq['company_id'].nunique():,} bedrijven in company_quarter, {len(names):,} met >= {args.min_postings} "
+              f"vacatures in peers")
+        write_atomic(cq, args.out_dir / "company_quarter.parquet")
+    else:
+        print(f"peers-only: {len(names):,} bedrijven met >= {args.min_postings} vacatures; company_quarter niet aangemaakt")
     write_atomic(peers, args.out_dir / "peers.parquet")
     print(f"geschreven naar {args.out_dir}\n\nControle met het oog: top-5 voor de grootste bedrijven")
     for cid in df[~df["is_agency"]]["company_id"].value_counts().head(5).index:
