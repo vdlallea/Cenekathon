@@ -1,13 +1,13 @@
 {
   "company_id": "ing",
-  "headline": "De bank loopt achter op AI-gebruikers: 4.0% tegenover 4.9% bij concurrenten.",
+  "headline": "Bank loopt achter op AI-gebruikers: 4.0% tegenover 4.9% bij concurrenten.",
   "actions": [
     {
-      "advice": "Werf per kwartaal 5 AI-gebruikers aan om de achterstand van 0.9 procentpunt te dichten.",
-      "cost_eur": 60000
+      "advice": "Werf per kwartaal 5 AI-gebruikers extern aan als ene van twee alternatieven om de achterstand te dichten, tegen EUR 48000 per kwartaal.",
+      "cost_eur": 48000
     },
     {
-      "advice": "Schol per kwartaal 5 medewerkers om tot AI-gebruiker als alternatief voor aanwerven, zodat dezelfde achterstand wordt gedicht zonder extra instroom.",
+      "advice": "Scholl per kwartaal 5 bestaande medewerkers om tot AI-gebruikers als tweede alternatief om dezelfde achterstand te dichten, tegen EUR 20000 per kwartaal.",
       "cost_eur": 20000
     }
   ],
