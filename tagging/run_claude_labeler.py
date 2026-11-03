@@ -39,17 +39,36 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+# Alleen padnamen die in zowel de lokale als de server-versie van common/paths.py bestaan.
 from common.paths import (  # noqa: E402
     CLAUDE_CHECKPOINT_JSONL,
     CLAUDE_LABELS_PARQUET,
     CLAUDE_USAGE_CSV,
     DATA_WORK,
     LABEL_SAMPLE_PARQUET,
-    DATA_LOGS_DIR,
     PROMPT_TXT,
-    ROOT,
+    TEST_SET_PARQUET,
 )
 from baseline import tag_text  # noqa: E402  (alleen voor de mock-responder)
+
+REPO_DIR = Path(__file__).resolve().parent.parent
+DATA_LOGS = DATA_WORK / "logs"
+CLAUDE_TEST_PARQUET = DATA_WORK / "claude_test_300.parquet"
+CLAUDE_TEST_CHECKPOINT = DATA_LOGS / "claude_test_checkpoint.jsonl"
+
+# Welke set labelen. Elke set heeft eigen uitvoer en eigen checkpoint.
+DATASETS = {
+    "labels": {
+        "input": LABEL_SAMPLE_PARQUET,
+        "out": CLAUDE_LABELS_PARQUET,
+        "checkpoint": CLAUDE_CHECKPOINT_JSONL,
+    },
+    "test": {
+        "input": TEST_SET_PARQUET,
+        "out": CLAUDE_TEST_PARQUET,
+        "checkpoint": CLAUDE_TEST_CHECKPOINT,
+    },
+}
 
 SCRIPT = "run_claude_labeler"
 DEFAULT_MODEL = "claude-haiku-5-5"
@@ -109,7 +128,7 @@ def load_api_key() -> str:
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if key:
         return key
-    env_file = ROOT / ".env"
+    env_file = REPO_DIR / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -361,10 +380,14 @@ def write_output(df: pd.DataFrame, done: dict, out_path: Path) -> pd.DataFrame:
 
 
 def parse_args(argv=None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Labelt de labelset met Claude (Haiku).")
-    p.add_argument("--input", type=Path, default=LABEL_SAMPLE_PARQUET)
+    p = argparse.ArgumentParser(description="Labelt de labelset (1500) of testset (300) met Claude (Haiku).")
+    p.add_argument("--dataset", choices=sorted(DATASETS), default="labels",
+                   help="labels = label_sample_1500 -> claude_labels_1500.parquet; "
+                        "test = test_set_300 -> claude_test_300.parquet")
+    p.add_argument("--input", type=Path, default=None,
+                   help="Standaard afhankelijk van --dataset")
     p.add_argument("--out", type=Path, default=None,
-                   help="Standaard: claude_labels_1500.parquet (mock: mock_claude_labels.parquet)")
+                   help="Standaard afhankelijk van --dataset (mock: mock_*)")
     p.add_argument("--prompt", type=Path, default=PROMPT_TXT)
     p.add_argument("--model", default=DEFAULT_MODEL)
     p.add_argument("--delay", type=float, default=0.3, help="Pauze tussen vacatures (s)")
@@ -382,18 +405,20 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> None:
     args = parse_args(argv)
     check_model(args.model)
+    ds = DATASETS[args.dataset]
+    input_path = args.input or ds["input"]
 
     # In mock-modus gaan uitvoer en logs naar aparte bestanden, zodat de echte niet vervuild raken.
     if args.mock:
-        out = args.out or DATA_WORK / "mock_claude_labels.parquet"
-        usage = args.usage_csv or DATA_LOGS_DIR / "mock_claude_usage.csv"
-        checkpoint = args.checkpoint or DATA_LOGS_DIR / "mock_claude_checkpoint.jsonl"
+        out = args.out or DATA_WORK / f"mock_{args.dataset}_labels.parquet"
+        usage = args.usage_csv or DATA_LOGS / "mock_claude_usage.csv"
+        checkpoint = args.checkpoint or DATA_LOGS / f"mock_{args.dataset}_checkpoint.jsonl"
         call = mock_call
         api_key = None
     else:
-        out = args.out or CLAUDE_LABELS_PARQUET
+        out = args.out or ds["out"]
         usage = args.usage_csv or CLAUDE_USAGE_CSV
-        checkpoint = args.checkpoint or CLAUDE_CHECKPOINT_JSONL
+        checkpoint = args.checkpoint or ds["checkpoint"]
         api_key = load_api_key()
         call = lambda prompt: api_call(prompt, args.model, api_key)  # noqa: E731
 
@@ -407,9 +432,10 @@ def main(argv=None) -> None:
         limit=args.limit,
     )
 
-    df = pd.read_parquet(args.input)
+    df = pd.read_parquet(input_path)
     template = args.prompt.read_text(encoding="utf-8")
-    print(f"{len(df)} vacatures, model={cfg.model}, uitvoer={out}")
+    print(f"dataset={args.dataset}: {len(df)} vacatures uit {input_path}, "
+          f"model={cfg.model}, uitvoer={out}, checkpoint={checkpoint}")
 
     try:
         done = run(df, template, call, cfg)
