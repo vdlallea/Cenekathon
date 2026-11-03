@@ -1,0 +1,19 @@
+{
+  "company_id": "rabobank",
+  "headline": "De bank heeft 2.0% AI-bouwers tegenover 3.3% bij concurrenten, de grootste AI-talentachterstand.",
+  "actions": [
+    {
+      "advice": "Werf per kwartaal 5 AI-bouwers extern aan als alternatief om de achterstand te dichten; dit kost 60000 EUR per kwartaal.",
+      "cost_eur": 60000
+    },
+    {
+      "advice": "School per kwartaal 5 bestaande medewerkers om tot AI-bouwer als alternatief om dezelfde achterstand te dichten; dit kost 20000 EUR per kwartaal.",
+      "cost_eur": 20000
+    }
+  ],
+  "evidence": {
+    "share_ai": 0.0802,
+    "peer_share_ai": 0.0911,
+    "n": 1463
+  }
+}

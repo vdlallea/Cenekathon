@@ -1,0 +1,19 @@
+{
+  "company_id": "kbc",
+  "headline": "Achterstand op AI-bouwers: 1.4% van de bank tegenover 3.4% bij concurrenten.",
+  "actions": [
+    {
+      "advice": "Werf per kwartaal 8 profielen AI-bouwers extern aan (EUR 96000 per kwartaal) als een van twee alternatieven om de achterstand te dichten.",
+      "cost_eur": 96000
+    },
+    {
+      "advice": "Schol per kwartaal 8 profielen AI-bouwers om uit bestaand personeel (EUR 32000 per kwartaal) als het tweede alternatief naast aanwerven om dezelfde achterstand te dichten.",
+      "cost_eur": 32000
+    }
+  ],
+  "evidence": {
+    "share_ai": 0.0892,
+    "peer_share_ai": 0.0893,
+    "n": 1524
+  }
+}
