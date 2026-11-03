@@ -54,23 +54,32 @@ LEGAL_RE = re.compile(
 )
 
 # Handmatige aliaslijst voor de grote groepen. Uitbreiden na de top-50-handcheck.
+# Ruwe namen per groep (groepsniveau). Sleutels worden door dezelfde normalisatie gehaald
+# als de data, dus schrijf ze gewoon zoals ze gepost worden. Uitbreiden na de top-50-handcheck.
 CANONICAL = {
-    "ing": {"ing"},
-    "abn-amro": {"abn amro", "abnamro", "abn"},
-    "rabobank": {"rabobank", "rabo"},
-    "kbc": {"kbc"},
-    "belfius": {"belfius"},
-    "bnp-paribas-fortis": {"bnp paribas fortis", "fortis"},
-    "lloyds": {"lloyds", "lloyds banking group"},
-    "natwest": {"natwest", "natwest group", "national westminster"},
-    "barclays": {"barclays"},
-    "hsbc": {"hsbc"},
-    "santander": {"santander"},
-    "nationwide": {"nationwide", "nationwide building society"},
-    "triodos": {"triodos"},
-    "aegon": {"aegon"},
+    "ing": ["ING", "ING Netherlands", "ING Belgium", "ING Bank N.V.", "ING Bank"],
+    "abn-amro": ["ABN AMRO", "ABN AMRO Bank N.V.", "ABN Amro", "ABN"],
+    "rabobank": ["Rabobank", "Rabo Bank"],
+    "kbc": ["KBC"],
+    "belfius": ["Belfius", "BELFIUS BANK"],
+    "bnp-paribas-fortis": ["BNP Paribas Fortis", "Fortis"],
+    "bnp-paribas": ["BNP Paribas"],
+    "lloyds": ["Lloyds", "Lloyds Banking Group", "Lloyds Bank"],
+    "natwest": ["NatWest", "NatWest Group", "National Westminster"],
+    "barclays": ["Barclays", "Barclays Bank PLC"],
+    "hsbc": ["HSBC", "HSBC UK", "HSBC Bank"],
+    "santander": ["Santander", "Santander UK", "Banco Santander"],
+    "nationwide": ["Nationwide", "Nationwide Building Society"],
+    "bank-of-america": ["Bank of America", "Bank of America Merrill Lynch"],
+    "citi": ["Citi", "Citigroup", "Citigroup Inc.", "Citibank"],
+    "jpmorgan-chase": ["JPMorgan Chase & Co.", "JPMorgan Chase", "JPMorganChase", "J.P. Morgan", "JP Morgan"],
+    "deutsche-bank": ["Deutsche Bank", "Deutsche Bank AG"],
+    "wtw": ["WTW", "Willis Towers Watson"],
+    "axa": ["AXA", "AXA UK"],
+    "m-and-g": ["M&G", "M&G plc"],
+    "triodos": ["Triodos", "Triodos Bank"],
+    "aegon": ["AEGON"],
 }
-ALIAS_TO_ID = {alias: cid for cid, aliases in CANONICAL.items() for alias in aliases}
 
 # Tussenpersonen: recruiters en jobsites die voor een ander posten.
 AGENCY_NAME_RE = re.compile(
@@ -78,7 +87,9 @@ AGENCY_NAME_RE = re.compile(
     r"talent (?:partners|solutions|acquisition)|"
     r"\b(?:hays|michael page|robert walters|randstad|adecco|robert half|manpower|brunel|"
     r"tempo.?team|page personnel|reed|hudson|harvey nash|pertemps|morgan mc ?kinley|"
-    r"badenoch|kelly services|computer futures)\b",
+    r"badenoch|kelly services|computer futures|"
+    r"youngcapital|young capital|veldsink|joof|"
+    r"stepstone|efinancialcareers|totaljobs|cv-?library|indeed|jobserve)\b",
     re.IGNORECASE,
 )
 AGENCY_TEXT_RE = re.compile(r"on behalf of (?:our|a|an|one of our) client", re.IGNORECASE)
@@ -90,6 +101,12 @@ def normalize_company(raw: str) -> str:
     s = re.sub(r"[^a-z0-9]+", " ", s)
     s = LEGAL_RE.sub(" ", s)
     return WS_RE.sub(" ", s).strip()
+
+
+# Genormaliseerde alias -> company_id. Zelfde normalisatie als de data, dus de sleutels passen.
+ALIAS_TO_ID = {
+    normalize_company(alias): cid for cid, aliases in CANONICAL.items() for alias in aliases
+}
 
 
 def resolve_company(norm: str) -> str:
