@@ -206,6 +206,8 @@ company_id, quarter, n_postings, share_ai, share_builder, share_user, share_gove
 
 **`peers.parquet`** (C, eindversie in `data/final/`): `company_id`, `peer_id`, `similarity`, `rank` (1–5).
 
+**`salaries.parquet`** (D, in `data/final/` of `~/data/work/`): één rij per UK-vacature met een gevonden salaris. Kolommen: `vacancy_id` (str, zoals in spine), `company_id` (str, zoals in spine), `salary_min` (float, jaarsalaris in GBP; dag × 220, uur × 1950), `salary_max` (float, gelijk aan `salary_min` als er maar één bedrag staat), `currency` (str, "GBP"), `period` (str: year | day | hour, oorspronkelijke eenheid).
+
 **`cards/<company_id>.json`** (D, in `data/final/`)
 
 ```
