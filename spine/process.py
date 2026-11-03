@@ -49,8 +49,13 @@ def strip_html(value) -> str:
 # ---------------------------------------------------------------- bedrijfsnamen
 # Juridische vormen en landnamen die weg mogen (groepsniveau).
 LEGAL_RE = re.compile(
-    r"\b(?:n v|nv|b v|bv|s a|sa|ltd|limited|plc|ag|gmbh|group|groep|holding|holdings|bank|banking|"
+    r"\b(?:n v|nv|b v|bv|s a|sa|ltd|limited|plc|ag|gmbh|group|groep|holding|holdings|bank|banking|inc|"
     r"belgie|belgium|belgique|nederland|netherlands|uk|united kingdom|great britain)\b"
+)
+# Eigen werving van een groep ("NN Careers", "Natwest Careers", "JPMC Candidate Experience page")
+# hoort bij de groep zelf, niet bij een apart bedrijf. Geen tussenpersoon.
+OWN_CAREERS_RE = re.compile(
+    r"\b(?:external |cws )?careers?\b(?: site)?|\bcandidate experience page\b"
 )
 
 # Handmatige aliaslijst voor de grote groepen. Uitbreiden na de top-50-handcheck.
@@ -72,10 +77,12 @@ CANONICAL = {
     "nationwide": ["Nationwide", "Nationwide Building Society"],
     "bank-of-america": ["Bank of America", "Bank of America Merrill Lynch"],
     "citi": ["Citi", "Citigroup", "Citigroup Inc.", "Citibank"],
-    "jpmorgan-chase": ["JPMorgan Chase & Co.", "JPMorgan Chase", "JPMorganChase", "J.P. Morgan", "JP Morgan"],
+    "jpmorgan-chase": ["JPMorgan Chase & Co.", "JPMorgan Chase", "JPMorganChase", "J.P. Morgan", "JP Morgan", "JPMC"],
+    "allianz": ["Allianz", "Allianz Partners"],
+    "peoples-partnership": ["People's Partnership", "Peoples Partnership"],
     "deutsche-bank": ["Deutsche Bank", "Deutsche Bank AG"],
     "wtw": ["WTW", "Willis Towers Watson"],
-    "axa": ["AXA", "AXA UK"],
+    "axa": ["AXA", "AXA UK", "AXA Partners"],
     "m-and-g": ["M&G", "M&G plc"],
     "triodos": ["Triodos", "Triodos Bank"],
     "aegon": ["AEGON"],
@@ -89,7 +96,11 @@ AGENCY_NAME_RE = re.compile(
     r"tempo.?team|page personnel|reed|hudson|harvey nash|pertemps|morgan mc ?kinley|"
     r"badenoch|kelly services|computer futures|"
     r"youngcapital|young capital|veldsink|joof|"
-    r"stepstone|efinancialcareers|totaljobs|cv-?library|indeed|jobserve)\b",
+    r"stepstone|efinancialcareers|totaljobs|cv-?library|indeed|jobserve|"
+    r"studentjob|talent ?& ?pro|asa talent|start people|konvert interim|xtra interim|"
+    r"talent link|city job offers|bebee|whatjobs|itzu jobs|jobs for humanity|"
+    r"lgbt great careers|career wallet|nexus jobs|alexander mann|proactive appointments|"
+    r"mw appointments|youconnect|i3 resourcing)\b|jobboard|job board",
     re.IGNORECASE,
 )
 AGENCY_TEXT_RE = re.compile(r"on behalf of (?:our|a|an|one of our) client", re.IGNORECASE)
@@ -99,6 +110,7 @@ def normalize_company(raw: str) -> str:
     s = unicodedata.normalize("NFKD", str(raw)).encode("ascii", "ignore").decode().lower()
     s = s.replace("&", " and ")
     s = re.sub(r"[^a-z0-9]+", " ", s)
+    s = OWN_CAREERS_RE.sub(" ", s)
     s = LEGAL_RE.sub(" ", s)
     return WS_RE.sub(" ", s).strip()
 
