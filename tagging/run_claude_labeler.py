@@ -45,9 +45,9 @@ from common.paths import (  # noqa: E402
     CLAUDE_USAGE_CSV,
     DATA_WORK,
     LABEL_SAMPLE_PARQUET,
-    LOG_DIR,
+    DATA_LOGS_DIR,
     PROMPT_TXT,
-    REPO_ROOT,
+    ROOT,
 )
 from baseline import tag_text  # noqa: E402  (alleen voor de mock-responder)
 
@@ -109,7 +109,7 @@ def load_api_key() -> str:
     key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if key:
         return key
-    env_file = REPO_ROOT / ".env"
+    env_file = ROOT / ".env"
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -386,8 +386,8 @@ def main(argv=None) -> None:
     # In mock-modus gaan uitvoer en logs naar aparte bestanden, zodat de echte niet vervuild raken.
     if args.mock:
         out = args.out or DATA_WORK / "mock_claude_labels.parquet"
-        usage = args.usage_csv or LOG_DIR / "mock_claude_usage.csv"
-        checkpoint = args.checkpoint or LOG_DIR / "mock_claude_checkpoint.jsonl"
+        usage = args.usage_csv or DATA_LOGS_DIR / "mock_claude_usage.csv"
+        checkpoint = args.checkpoint or DATA_LOGS_DIR / "mock_claude_checkpoint.jsonl"
         call = mock_call
         api_key = None
     else:

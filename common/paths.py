@@ -1,20 +1,14 @@
 """Centrale paden voor het team (zie SPEC.md, sectie Contracten).
-
-Alle scripts importeren hun paden hier, zodat ze nergens hardcoded staan.
-
-Gedeelde werkmap:
-  - Server: /home/team6/data/work/  (SPEC.md noemt dit ~/data/work/)
-  - Lokaal: <repo>/data/work/
-Overschrijven kan met de env-var TEAM_DATA_WORK.
-"""
+Wijzig dit alleen via een PR die in de groep is aangekondigd."""
 
 import os
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[1]
 
+# Werkmap afhandeling (Server vs Lokaal)
 _SERVER_WORK = Path("/home/team6/data/work")
-_LOCAL_WORK = REPO_ROOT / "data" / "work"
+_LOCAL_WORK = ROOT / "data" / "work"
 
 DATA_WORK = Path(
     os.environ.get("TEAM_DATA_WORK")
@@ -31,9 +25,26 @@ LABEL_SAMPLE_PARQUET = DATA_WORK / "label_sample_1500.parquet"
 TEST_SET_PARQUET = DATA_WORK / "test_set_300.parquet"
 CLAUDE_LABELS_PARQUET = DATA_WORK / "claude_labels_1500.parquet"
 
-# Prompt en logs
-TAGGING_DIR = REPO_ROOT / "tagging"
+# Prompt (B)
+TAGGING_DIR = ROOT / "tagging"
 PROMPT_TXT = TAGGING_DIR / "llm_prompt_draft.txt"
-LOG_DIR = DATA_WORK / "logs"  # bestaat al op de server (spine_full.log)
-CLAUDE_USAGE_CSV = LOG_DIR / "claude_usage.csv"
-CLAUDE_CHECKPOINT_JSONL = LOG_DIR / "claude_labels_checkpoint.jsonl"
+
+# Eindbestanden (klein, wel in git) (Slice C & D)
+FINAL_DIR = ROOT / "data" / "final"
+CARDS_DIR = FINAL_DIR / "cards"
+COMPANY_QUARTER = FINAL_DIR / "company_quarter.parquet"
+PEERS = FINAL_DIR / "peers.parquet"
+
+# Stubs: nepdata voor als de echte bestanden nog niet bestaan (Slice D)
+STUB_DIR = ROOT / "app" / "stubs"
+STUB_COMPANY_QUARTER = STUB_DIR / "company_quarter.parquet"
+STUB_PEERS = STUB_DIR / "peers.parquet"
+STUB_CARDS_DIR = STUB_DIR / "cards"
+
+# Logs
+LOGS_DIR = ROOT / "logs"
+DATA_LOGS_DIR = DATA_WORK / "logs"
+
+CLAUDE_USAGE_CSV = LOGS_DIR / "claude_usage.csv"
+USAGE_LOG = CLAUDE_USAGE_CSV  # Alias voor D
+CLAUDE_CHECKPOINT_JSONL = DATA_LOGS_DIR / "claude_labels_checkpoint.jsonl"
