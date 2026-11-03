@@ -65,6 +65,16 @@ agg.validate(cq, peers)
 small = agg.top_peers(names, vecs_c, k=5, block=2)
 pd.testing.assert_frame_equal(peers.reset_index(drop=True), small.reset_index(drop=True))
 
+# centreren: nog steeds lengte 1, dezelfde bedrijven, en de juiste clusters blijven samen
+names_c, vecs_ctr = agg.company_vectors(df, emb_shuffled, min_postings=100, center=True)
+assert names_c == names and np.allclose(np.linalg.norm(vecs_ctr, axis=1), 1.0, atol=1e-5)
+peers_ctr = agg.top_peers(names_c, vecs_ctr, k=5)
+for cid, cl in [("a1", "A"), ("b2", "B")]:
+    p = peers_ctr[peers_ctr.company_id == cid].sort_values("rank")
+    own = {c for c, k in COMPANIES.items() if k == cl and c in names} - {cid}
+    assert set(p.peer_id.iloc[:2]) == own, (cid, p)
+agg.validate(cq, peers_ctr)
+
 # ontbrekende tags: hard stoppen, tenzij --allow-partial
 try:
     agg.join_inputs(spine.drop(columns=["has_ai", "ai_type"]), tags.iloc[:-10], emb_ids)
