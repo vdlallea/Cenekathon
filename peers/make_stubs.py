@@ -2,18 +2,18 @@
 
 Nepwaarden, juiste kolommen en types volgens het contract in SPEC.md.
 Doel: D kan de Streamlit-app bouwen zonder op echte cijfers te wachten.
-Wordt later overschreven door de echte tabellen (zelfde bestandsnamen).
+LET OP: schrijf dit nooit naar data/final/. Daar horen alleen de echte tabellen; de app van D
+toont een banner als die ontbreken, en ziet nepdata anders aan voor het echte resultaat.
 
-Gebruik (vanuit de repo-root):
-    python peers/make_stubs.py
+Gebruik (vanuit de repo-root), bijvoorbeeld:
+    python peers/make_stubs.py --out-dir /tmp/stubs_c
 """
+import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# TODO: vervangen door `from common.paths import FINAL_DIR` zodra D common/paths.py pusht.
-FINAL_DIR = Path(__file__).resolve().parents[1] / "data" / "final"
 
 SEED = 42
 COMPANIES = ["ing", "abn-amro", "rabobank", "kbc", "belfius", "bnp-paribas-fortis"]
@@ -87,15 +87,20 @@ def validate(cq: pd.DataFrame, peers: pd.DataFrame) -> None:
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description="Nepdata voor company_quarter en peers")
+    ap.add_argument("--out-dir", type=Path, required=True, help="map voor de stubs (niet data/final)")
+    out_dir = ap.parse_args().out_dir
+    if out_dir.resolve() == (Path(__file__).resolve().parents[1] / "data" / "final"):
+        raise SystemExit("data/final is voor de echte tabellen; kies een andere map")
     rng = np.random.default_rng(SEED)
     cq = make_company_quarter(rng)
     peers = make_peers(rng)
     validate(cq, peers)
 
-    FINAL_DIR.mkdir(parents=True, exist_ok=True)
-    cq.to_parquet(FINAL_DIR / "company_quarter.parquet", index=False)
-    peers.to_parquet(FINAL_DIR / "peers.parquet", index=False)
-    print(f"company_quarter.parquet: {len(cq)} rijen | peers.parquet: {len(peers)} rijen -> {FINAL_DIR}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cq.to_parquet(out_dir / "company_quarter.parquet", index=False)
+    peers.to_parquet(out_dir / "peers.parquet", index=False)
+    print(f"company_quarter.parquet: {len(cq)} rijen | peers.parquet: {len(peers)} rijen -> {out_dir}")
 
 
 if __name__ == "__main__":

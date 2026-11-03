@@ -20,8 +20,8 @@ Op de sample (veel minder vacatures per bedrijf, dus lagere drempel):
     python peers/aggregate.py --spine ~/data/work/sample_20k.parquet \\
         --embeddings ~/data/work/embeddings_sample_20k.npy --min-postings 20
 
-LET OP: de uitvoer gaat standaard naar data/final/ en overschrijft daar de stubs.
-Gebruik --out-dir om dat te vermijden.
+LET OP: de uitvoer gaat standaard naar data/final/, de map met de echte eindtabellen.
+Gebruik --out-dir voor proefruns (bijvoorbeeld op de sample).
 """
 import argparse
 import os
