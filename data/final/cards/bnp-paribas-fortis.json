@@ -3,11 +3,11 @@
   "headline": "Bank loopt achter op AI-gebruikers: 4.2% tegenover 4.8% bij concurrenten.",
   "actions": [
     {
-      "advice": "Werf per kwartaal 2 AI-gebruikersprofielen extern aan; dit is een van twee alternatieven om dezelfde achterstand op AI-gebruikers te dichten.",
-      "cost_eur": 24000
+      "advice": "Werf per kwartaal 2 AI-gebruikers aan als een van twee alternatieven om de achterstand op AI-gebruikers te dichten, tegen 19200 EUR per kwartaal.",
+      "cost_eur": 19200
     },
     {
-      "advice": "Scholen per kwartaal 2 bestaande medewerkers om tot AI-gebruikers, als alternatief voor aanwerven om dezelfde achterstand te dichten.",
+      "advice": "School bestaande medewerkers om tot AI-gebruikers als alternatief voor aanwerven, 2 profielen per kwartaal, tegen 8000 EUR per kwartaal.",
       "cost_eur": 8000
     }
   ],

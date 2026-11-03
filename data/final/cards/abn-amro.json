@@ -1,13 +1,13 @@
 {
   "company_id": "abn-amro",
-  "headline": "De bank scoort 2.8% op AI-gebruikers, concurrenten 5.1%: de grootste achterstand op AI-talent.",
+  "headline": "ABN AMRO loopt achter op AI-gebruikers: 2.8% tegenover 5.1% bij concurrenten.",
   "actions": [
     {
-      "advice": "Werf per kwartaal 9 AI-gebruikers aan om de achterstand te dichten; dit kost 108000 EUR per kwartaal.",
-      "cost_eur": 108000
+      "advice": "Werf per kwartaal 9 AI-gebruikers aan, tegen 86400 EUR per kwartaal; dit is het ene alternatief om dezelfde achterstand op AI-gebruikers te dichten.",
+      "cost_eur": 86400
     },
     {
-      "advice": "School per kwartaal 9 bestaande medewerkers om tot AI-gebruiker, als alternatief voor aanwerven tegen 36000 EUR per kwartaal.",
+      "advice": "Scholing van bestaande medewerkers tot AI-gebruikers levert per kwartaal eveneens 9 profielen op, tegen 36000 EUR per kwartaal; dit is het andere alternatief om diezelfde achterstand te dichten.",
       "cost_eur": 36000
     }
   ],
