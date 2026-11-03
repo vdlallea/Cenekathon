@@ -83,9 +83,35 @@ def test_coverage_pct() -> None:
     assert coverage_pct(0, 0) == 0.0
 
 
+def test_main_writes_contract_file(tmp_path=None) -> None:
+    import tempfile
+    from pathlib import Path
+
+    from salaries import main
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        spine = tmp / "spine.parquet"
+        out = tmp / "sub" / "salaries.parquet"
+        pd.DataFrame({
+            "vacancy_id": ["v1", "v2", "v3"],
+            "company_id": ["kbc", "ing", "ing"],
+            "country": ["GB", "GB", "BE"],
+            "title": ["Analyst", "Engineer", "Analyst"],
+            "text": ["Pay: £55,000 - £65,000", "Day rate £300 per day", "£60,000 per annum"],
+        }).to_parquet(spine, index=False)
+        assert main([str(spine), "--out", str(out)]) == 0
+        written = pd.read_parquet(out)
+        assert list(written.columns) == COLUMNS, written.columns
+        # Alleen UK-vacatures tellen mee; v3 (BE) valt weg.
+        assert written["vacancy_id"].tolist() == ["v1", "v2"]
+        assert written.loc[1, "salary_min"] == 300 * DAYS_PER_YEAR
+
+
 if __name__ == "__main__":
     tests = [test_examples, test_range_blocks_single_amount, test_empty_and_missing_text,
-             test_extract_salaries_contract, test_extract_salaries_empty, test_coverage_pct]
+             test_extract_salaries_contract, test_extract_salaries_empty, test_coverage_pct,
+             test_main_writes_contract_file]
     for t in tests:
         t()
         print(f"OK  {t.__name__}")
