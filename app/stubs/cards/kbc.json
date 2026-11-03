@@ -1,0 +1,20 @@
+{
+  "company_id": "kbc",
+  "headline": "KBC werft minder AI-bewakers aan dan haar concurrenten (STUB, verzonnen cijfers)",
+  "actions": [
+    {
+      "advice": "Werf 5 AI-governanceprofielen aan",
+      "cost_eur": 450000
+    },
+    {
+      "advice": "Schoolt 15 risk-analisten om",
+      "cost_eur": 120000
+    }
+  ],
+  "evidence": {
+    "share_ai": 0.06,
+    "peer_share_ai": 0.11,
+    "n": 1840
+  },
+  "stub": true
+}
