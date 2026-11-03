@@ -250,3 +250,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AI Talent Radar (slice D)
+logs/claude_usage.csv
+data/raw/
+data/work/
+*.npy
