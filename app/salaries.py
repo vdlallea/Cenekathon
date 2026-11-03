@@ -19,9 +19,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from assumptions import DAYS_PER_YEAR, HOURS_PER_YEAR, MIN_UNITLESS_ANNUAL_GBP
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from assumptions import DAYS_PER_YEAR, HOURS_PER_YEAR, MIN_UNITLESS_ANNUAL_GBP  # noqa: E402
+from common import paths  # noqa: E402
 
 CURRENCY = "GBP"
+# Contract: data/final/salaries.parquet (SPEC.md). Lokaal gedefinieerd, want common/paths.py mag niet zonder overleg wijzigen.
+DEFAULT_OUT = paths.FINAL_DIR / "salaries.parquet"
 COLUMNS = ["vacancy_id", "company_id", "salary_min", "salary_max", "currency", "period"]
 PERIOD_FACTOR = {"year": 1, "day": DAYS_PER_YEAR, "hour": HOURS_PER_YEAR}
 UNIT_TO_PERIOD = {"annum": "year", "year": "year", "yr": "year", "day": "day", "hour": "hour", "hr": "hour"}
@@ -134,17 +138,22 @@ def coverage_pct(n_found: int, n_total: int) -> float:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Salarissen uit UK-vacatures (regex).")
+    parser = argparse.ArgumentParser(description="Salarissen uit UK-vacatures (regex) naar salaries.parquet.")
     parser.add_argument("parquet", type=Path, help="pad naar spine.parquet")
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help=f"uitvoerbestand (standaard {DEFAULT_OUT})")
     args = parser.parse_args(argv)
 
     frame = pd.read_parquet(args.parquet, columns=["vacancy_id", "company_id", "country", "title", "text"])
     gb = frame[frame["country"] == "GB"]
     salaries = extract_salaries(gb)
 
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    salaries.to_parquet(args.out, index=False)
+
     pct = coverage_pct(len(salaries), len(gb))
     print(f"UK-vacatures: {len(gb):,}")
     print(f"Met gevonden salaris: {len(salaries):,} ({pct:.1f}%)")
+    print(f"Weggeschreven: {args.out}")
     return 0
 
 
