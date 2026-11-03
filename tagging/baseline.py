@@ -7,28 +7,25 @@ de AI-woordenlijst, en schrijft het contract tags.parquet:
 
 Regel bij twijfel (meerdere types): bouwer > bewaker > gebruiker.
 
-Draaien (op de server, in de venv):
-  python baseline.py
-Pad naar de sample kan worden overschreven met de env-var SAMPLE_PATH.
+Paden komen uit common/paths.py. Overschrijven kan met argumenten:
+  python baseline.py --sample <pad> --out <pad>
 """
 
-import os
+import argparse
 import re
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-# --- Paden --------------------------------------------------------------------
-# Sample staat op de server in de gedeelde map ~/data/work/ (team6).
-SAMPLE_PATH = Path(
-    os.environ.get("SAMPLE_PATH", "/home/team6/data/work/sample_20k.parquet")
-)
-# ../data/work/tags.parquet ten opzichte van deze map (tagging/).
-TAGS_PATH = Path(__file__).resolve().parent.parent / "data" / "work" / "tags.parquet"
+# common/ staat één map boven tagging/ (de repo-root).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from common.paths import SAMPLE_PARQUET, TAGS_PARQUET  # noqa: E402
 
 # --- AI-woordenlijst ----------------------------------------------------------
 # Patronen zijn regex en worden toegepast op kleine letters.
-# Volgorde in TYPE_PATTERNS = prioriteit (bouwer > bewaker > gebruiker).
+# Volgorde in de logica hieronder = prioriteit (bouwer > bewaker > gebruiker).
 
 BUILDER_PATTERNS = [
     r"machine learning",
@@ -55,6 +52,20 @@ GOVERNOR_PATTERNS = [
     r"ai[- ]risk",
 ]
 
+# "Model risk" telt alleen als bewaker wanneer AI of ML expliciet in de
+# vacature staat. Klassieke kredietmodelvalidatie (zonder AI/ML) telt niet.
+MODEL_RISK_PATTERNS = [
+    r"model[- ]?risk",
+    r"model[- ]?risico",
+]
+EXPLICIT_AI_ML_PATTERNS = [
+    r"\bai\b",
+    r"\bml\b",
+    r"machine learning",
+    r"artificial intelligence",
+    r"kunstmatige intelligentie",
+]
+
 USER_PATTERNS = [
     r"copilot",
     r"chatgpt",
@@ -72,25 +83,28 @@ GENERIC_PATTERNS = [
     r"kunstmatige intelligentie",
 ]
 
-# Volgorde = prioriteit bij meerdere types.
-TYPE_PATTERNS = [
-    ("builder", BUILDER_PATTERNS),
-    ("governor", GOVERNOR_PATTERNS),
-    ("user", USER_PATTERNS),
-]
-
 
 # --- Logica -------------------------------------------------------------------
 def _matches(text: str, patterns: list[str]) -> bool:
     return any(re.search(p, text) for p in patterns)
 
 
+def _model_risk_counts(text: str) -> bool:
+    """Model risk telt alleen als AI of ML er expliciet bij staat."""
+    return _matches(text, MODEL_RISK_PATTERNS) and _matches(
+        text, EXPLICIT_AI_ML_PATTERNS
+    )
+
+
 def tag_text(text: str) -> tuple[bool, str]:
     """Geeft (has_ai, ai_type) terug voor één tekst."""
     t = text.lower()
-    for ai_type, patterns in TYPE_PATTERNS:
-        if _matches(t, patterns):
-            return True, ai_type
+    if _matches(t, BUILDER_PATTERNS):
+        return True, "builder"
+    if _matches(t, GOVERNOR_PATTERNS) or _model_risk_counts(t):
+        return True, "governor"
+    if _matches(t, USER_PATTERNS):
+        return True, "user"
     # Alleen algemene AI-termen: AI is genoemd, maar het type is onduidelijk.
     # Fallback naar "user": een algemene AI-vermelding past het best bij
     # een niet-AI-functie die AI gebruikt.
@@ -130,19 +144,41 @@ def _self_check() -> None:
     assert tag_text("copilot en chatgpt") == (True, "user")
     assert tag_text("generative ai ervaring") == (True, "user")
     assert tag_text("boekhouding en rapportage") == (False, "none")
+    # Model risk: alleen met expliciet AI of ML
+    assert tag_text("model risk management en AI-tools") == (True, "governor")
+    assert tag_text("model risk en machine learning") == (True, "builder")
+    assert tag_text("model risk validatie van kredietmodellen") == (False, "none")
+    assert tag_text("kredietmodelvalidatie en model risk rapportage") == (
+        False,
+        "none",
+    )
 
 
-if __name__ == "__main__":
+def parse_args(argv=None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="AI-tag basislijn (keyword).")
+    p.add_argument("--sample", type=Path, default=SAMPLE_PARQUET,
+                   help="Invoer: sample-parquet (standaard uit common/paths.py)")
+    p.add_argument("--out", type=Path, default=TAGS_PARQUET,
+                   help="Uitvoer: tags.parquet (standaard uit common/paths.py)")
+    return p.parse_args(argv)
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
     _self_check()
 
-    sample = pd.read_parquet(SAMPLE_PATH)
-    print(f"Sample ingelezen: {len(sample)} rijen uit {SAMPLE_PATH}")
+    sample = pd.read_parquet(args.sample)
+    print(f"Sample ingelezen: {len(sample)} rijen uit {args.sample}")
 
     tags = build_tags(sample)
-    TAGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tags.to_parquet(TAGS_PATH, index=False)
-    print(f"Geschreven: {TAGS_PATH} ({len(tags)} rijen)")
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    tags.to_parquet(args.out, index=False)
+    print(f"Geschreven: {args.out} ({len(tags)} rijen)")
     print(tags.dtypes)
 
     print("\nValue counts ai_type:")
     print(tags["ai_type"].value_counts())
+
+
+if __name__ == "__main__":
+    main()
