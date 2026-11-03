@@ -61,13 +61,18 @@ def prepare_docs(df: pd.DataFrame, mask: bool = True) -> list[str]:
     return ("passage: " + docs.str.strip()).tolist()
 
 
-def embed(docs: list[str], batch_size: int) -> np.ndarray:
+def embed(docs: list[str], batch_size: int, max_tokens: int = MAX_TOKENS) -> tuple[np.ndarray, float]:
+    """Geeft (vectoren, seconden voor alleen het coderen). Laden en downloaden van het
+    model en de eerste, trage batch (CUDA-opwarming) tellen niet mee in de tijd."""
     import torch
     from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer(MODEL_NAME, device="cuda")
-    model.max_seq_length = MAX_TOKENS
+    model.max_seq_length = max_tokens
     model.half()  # fp16: ruim sneller, kwaliteit voor cosine-similariteit gelijkwaardig
+    model.encode(docs[:batch_size], batch_size=batch_size, show_progress_bar=False)  # opwarmen
+
+    t0 = time.time()
     vecs = model.encode(
         docs,
         batch_size=batch_size,
@@ -75,8 +80,9 @@ def embed(docs: list[str], batch_size: int) -> np.ndarray:
         convert_to_numpy=True,
         show_progress_bar=True,
     )
+    secs = time.time() - t0
     print(f"piek GPU-geheugen: {torch.cuda.max_memory_allocated() / 1e9:.1f} GB (grens in SPEC: 20 GB)")
-    return vecs.astype(np.float32)
+    return vecs.astype(np.float32), secs
 
 
 def output_names(input_path: Path) -> tuple[str, str]:
@@ -110,6 +116,8 @@ def main() -> None:
     ap.add_argument("--out-dir", type=Path, default=WORK_DIR)
     ap.add_argument("--limit", type=int, default=None, help="alleen de eerste N rijen (rooktest)")
     ap.add_argument("--batch-size", type=int, default=128)
+    ap.add_argument("--max-tokens", type=int, default=MAX_TOKENS,
+                    help="kap elke vacature af op N tokens; 256 is ruwweg 2x sneller dan 512")
     ap.add_argument("--no-mask", action="store_true", help="bedrijfsnaam NIET uit de tekst halen")
     args = ap.parse_args()
 
@@ -130,10 +138,10 @@ def main() -> None:
     docs = prepare_docs(df, mask=not args.no_mask)
     print(f"{len(docs):,} vacatures | voorbeeld:\n{docs[0][:300]!r}\n")
 
-    t0 = time.time()
-    vecs = embed(docs, args.batch_size)
-    secs = time.time() - t0
-    print(f"{len(docs) / secs:.0f} docs/s -> alle 1,5M vacatures ≈ {1_542_169 / (len(docs) / secs) / 3600:.1f} uur")
+    vecs, secs = embed(docs, args.batch_size, args.max_tokens)
+    rate = len(docs) / secs
+    print(f"{rate:.0f} docs/s (alleen coderen, {args.max_tokens} tokens) -> alle 1,5M vacatures ≈ "
+          f"{1_542_169 / rate / 3600:.1f} uur. Met < 1.000 vacatures is dit een grove schatting.")
 
     check(vecs, len(df))
     npy_name, ids_name = output_names(args.input)
