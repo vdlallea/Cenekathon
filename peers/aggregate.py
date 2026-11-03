@@ -100,8 +100,13 @@ def make_company_quarter(df: pd.DataFrame) -> pd.DataFrame:
     })
 
 
-def company_vectors(df: pd.DataFrame, emb: np.ndarray, min_postings: int) -> tuple[list[str], np.ndarray]:
-    """Gemiddelde vacaturevector per bedrijf (L2-genormaliseerd), zonder tussenpersonen."""
+def company_vectors(df: pd.DataFrame, emb: np.ndarray, min_postings: int,
+                    center: bool = False) -> tuple[list[str], np.ndarray]:
+    """Gemiddelde vacaturevector per bedrijf (L2-genormaliseerd), zonder tussenpersonen.
+
+    center=True haalt eerst het gemiddelde van alle bedrijfsvectoren eraf. e5-vectoren van gewone tekst
+    liggen allemaal dicht bij elkaar (cosine 0,99+ voor bijna elk bedrijf); het gemeenschappelijke deel
+    (taal, vacature-opmaak) domineert dan de score. Dat eraf halen laat zien waarin bedrijven verschillen."""
     d = df[~df["is_agency"]]
     counts = d.groupby("company_id").size()
     d = d[d["company_id"].isin(counts[counts >= min_postings].index)]
@@ -113,7 +118,12 @@ def company_vectors(df: pd.DataFrame, emb: np.ndarray, min_postings: int) -> tup
         vecs.append(v / np.linalg.norm(v))
     if not vecs:
         return [], np.zeros((0, emb.shape[1]), dtype=np.float32)
-    return names, np.vstack(vecs).astype(np.float32)
+    mat = np.vstack(vecs)
+    if center and len(names) > 2:
+        mat = mat - mat.mean(axis=0, keepdims=True)
+        norms = np.linalg.norm(mat, axis=1, keepdims=True)
+        mat = mat / np.where(norms > 0, norms, 1.0)
+    return names, mat.astype(np.float32)
 
 
 def top_peers(names: list[str], vecs: np.ndarray, k: int = 5, block: int = 1024) -> pd.DataFrame:
@@ -164,6 +174,8 @@ def main() -> None:
     ap.add_argument("--embeddings", type=Path, default=WORK_DIR / "embeddings.npy")
     ap.add_argument("--out-dir", type=Path, default=FINAL_DIR)
     ap.add_argument("--min-postings", type=int, default=200)
+    ap.add_argument("--center", action="store_true",
+                    help="haal het gemiddelde van alle bedrijfsvectoren eraf voor het vergelijken (spreidt de scores uit)")
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument("--allow-partial", action="store_true", help="ga door als tags of embeddings voor sommige vacatures ontbreken")
     ap.add_argument("--peers-only", action="store_true",
@@ -183,7 +195,7 @@ def main() -> None:
     print(f"{len(df):,} vacatures gebruikt, waarvan {n_agency:,} van tussenpersonen ({n_agency / len(df):.1%}) die wegvallen")
 
     cq = None if args.peers_only else make_company_quarter(df)
-    names, vecs = company_vectors(df, emb, args.min_postings)
+    names, vecs = company_vectors(df, emb, args.min_postings, center=args.center)
     peers = top_peers(names, vecs, k=args.top_k)
     validate(cq, peers)
     if cq is not None:
